@@ -25,7 +25,7 @@ namespace Catch {
         bool operator() (TestCase i,TestCase j) const { return (i<j);}
     };
     struct RandomNumberGenerator {
-        int operator()( int n ) const { return std::rand() % n; }
+        std::ptrdiff_t operator()( std::ptrdiff_t n ) const { return (std::ptrdiff_t)(std::rand() % n); }
     };
 
     inline std::vector<TestCase> sortTests( IConfig const& config, std::vector<TestCase> const& unsortedTestCases ) {
