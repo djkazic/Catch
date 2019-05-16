@@ -12,7 +12,6 @@
 #define TWOBLUECUBES_SINGLE_INCLUDE_CATCH_HPP_INCLUDED
 // start catch.hpp
 
-
 #define CATCH_VERSION_MAJOR 2
 #define CATCH_VERSION_MINOR 7
 #define CATCH_VERSION_PATCH 2
@@ -3483,6 +3482,9 @@ namespace Catch {
 #endif
 } // namespace Catch;
 
+// returnpoint
+#include <sstream>
+
 #define CATCH_PREPARE_EXCEPTION( type, msg ) \
     type( ( Catch::ReusableStringStream() << msg ).str() )
 #define CATCH_INTERNAL_ERROR( msg ) \
@@ -5771,6 +5773,70 @@ namespace Catch {
 
 #endif // ! CATCH_CONFIG_IMPL_ONLY
 
+// blank ns
+namespace {
+
+// Performs equivalent check of std::fabs(lhs - rhs) <= margin
+// But without the subtraction to allow for INFINITY in comparison
+bool marginComparison(double lhs, double rhs, double margin) {
+    return (lhs + margin >= rhs) && (rhs + margin >= lhs);
+}
+
+}
+
+#include <sstream>
+
+// hmm
+namespace Catch {
+namespace Detail {
+
+    inline Approx::Approx ( double value )
+    :   m_epsilon( std::numeric_limits<float>::epsilon()*100 ),
+        m_margin( 0.0 ),
+        m_scale( 0.0 ),
+        m_value( value )
+    {}
+
+    inline Approx Approx::custom() {
+        return Approx( 0 );
+    }
+
+    inline Approx Approx::operator-() const {
+        auto temp(*this);
+        temp.m_value = -temp.m_value;
+        return temp;
+    }
+
+    inline std::string Approx::toString() const {
+//        ReusableStringStream rss;
+        std::stringstream rss;
+        rss << "Approx( " << ::Catch::Detail::stringify( m_value ) << " )";
+        return rss.str();
+    }
+
+    inline bool Approx::equalityComparisonImpl(const double other) const {
+        // First try with fixed margin, then compute margin based on epsilon, scale and Approx's value
+        // Thanks to Richard Harris for his help refining the scaled margin value
+        return marginComparison(m_value, other, m_margin) || marginComparison(m_value, other, m_epsilon * (m_scale + std::fabs(m_value)));
+    }
+
+    inline void Approx::setMargin(double newMargin) {
+        //CATCH_ENFORCE(newMargin >= 0,
+         //   "Invalid Approx::margin: " << newMargin << '.'
+         //   << " Approx::Margin has to be non-negative.");
+        m_margin = newMargin;
+    }
+
+    inline void Approx::setEpsilon(double newEpsilon) {
+      //  CATCH_ENFORCE(newEpsilon >= 0 && newEpsilon <= 1.0,
+      //      "Invalid Approx::epsilon: " << newEpsilon << '.'
+      //      << " Approx::epsilon has to be in [0, 1]");
+        m_epsilon = newEpsilon;
+    }
+
+} // end namespace Detail
+} // end namespace Catch
+
 #ifdef CATCH_IMPL
 // start catch_impl.hpp
 
@@ -5945,63 +6011,7 @@ namespace Catch {
 #include <cmath>
 #include <limits>
 
-namespace {
-
-// Performs equivalent check of std::fabs(lhs - rhs) <= margin
-// But without the subtraction to allow for INFINITY in comparison
-bool marginComparison(double lhs, double rhs, double margin) {
-    return (lhs + margin >= rhs) && (rhs + margin >= lhs);
-}
-
-}
-
 namespace Catch {
-namespace Detail {
-
-    Approx::Approx ( double value )
-    :   m_epsilon( std::numeric_limits<float>::epsilon()*100 ),
-        m_margin( 0.0 ),
-        m_scale( 0.0 ),
-        m_value( value )
-    {}
-
-    Approx Approx::custom() {
-        return Approx( 0 );
-    }
-
-    Approx Approx::operator-() const {
-        auto temp(*this);
-        temp.m_value = -temp.m_value;
-        return temp;
-    }
-
-    std::string Approx::toString() const {
-        ReusableStringStream rss;
-        rss << "Approx( " << ::Catch::Detail::stringify( m_value ) << " )";
-        return rss.str();
-    }
-
-    bool Approx::equalityComparisonImpl(const double other) const {
-        // First try with fixed margin, then compute margin based on epsilon, scale and Approx's value
-        // Thanks to Richard Harris for his help refining the scaled margin value
-        return marginComparison(m_value, other, m_margin) || marginComparison(m_value, other, m_epsilon * (m_scale + std::fabs(m_value)));
-    }
-
-    void Approx::setMargin(double newMargin) {
-        CATCH_ENFORCE(newMargin >= 0,
-            "Invalid Approx::margin: " << newMargin << '.'
-            << " Approx::Margin has to be non-negative.");
-        m_margin = newMargin;
-    }
-
-    void Approx::setEpsilon(double newEpsilon) {
-        CATCH_ENFORCE(newEpsilon >= 0 && newEpsilon <= 1.0,
-            "Invalid Approx::epsilon: " << newEpsilon << '.'
-            << " Approx::epsilon has to be in [0, 1]");
-        m_epsilon = newEpsilon;
-    }
-
-} // end namespace Detail
 
 namespace literals {
     Detail::Approx operator "" _a(long double val) {
